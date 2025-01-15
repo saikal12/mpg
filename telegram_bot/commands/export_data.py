@@ -12,29 +12,30 @@ from telegram_bot.models import MPGCalculation, Refuel
 
 @sync_to_async
 def process_export_data(user):
-    # 1. Создание Excel файла
+    # Create Excel file
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     sheet.title = "Fuel entries and MPG calculations"
 
-    # 2. Заполнение данных
+    # Add headers to file
     headers = ["Date", "Fuel Volume (in gallons)", "Odometer Reading (in miles)", "Fueling Location"]
-    sheet.append(headers)  # Добавляем заголовки
+    sheet.append(headers) 
 
-    # Пример данных из базы
+    # Get all users data about refuel 
     refuels = list(Refuel.objects.filter(user=user.id).order_by('-date'))
-
+    # add to file
     for refuel in refuels:
+        # Formating date
         sheet.append([
-            refuel.date.strftime('%d.%m.%Y'),  # Форматируем дату
+            refuel.date.strftime('%d.%m.%Y'),  
             refuel.fuel_amount,
             refuel.odometer_reading,
             refuel.location or "N/A"
         ])
-
+    # Add headers to file
     headers = ["Last refuel", "Previous refuel", "Distance", "Fuel_used", "MPG"]
     sheet.append(headers)
-
+    # Get all users data about mpg_calculations 
     mpg_calculations = list(MPGCalculation.objects.filter(user=user.id))
     for mpg in mpg_calculations:
         sheet.append([
@@ -45,7 +46,7 @@ def process_export_data(user):
             mpg.mpg
         ])
 
-        # Настройка ширины колонок
+        # Sheet width and length settings
     for column in sheet.columns:
         max_length = max(len(str(cell.value or "")) for cell in column)
         sheet.column_dimensions[column[0].column_letter].width = max_length + 2
@@ -59,12 +60,12 @@ async def export_data(update: Update, context: CallbackContext):
 
 
 
-    # 3. Сохранение файла
+    # Saving data
     with NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
         workbook.save(temp_file.name)
         temp_file.seek(0)
 
-        # 4. Отправка файла пользователю
+        # Send to bot report file
         await update.message.reply_document(
             document=open(temp_file.name, "rb"),
             filename="Refuel_Report.xlsx",

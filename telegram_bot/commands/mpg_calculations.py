@@ -17,7 +17,7 @@ async def mpg_calculations(update: Update, context: CallbackContext):
     user = await create_user_account(user)
     refuels = await get_latest_refuels(user)
     if len(refuels) < 2:
-        await update.message.reply_text("Недостаточно данных для расчета MPG.")
+        await update.message.reply_text("Not enough data to calculate MPG.")
         return
     # get 2 last refuels
     last_refuel, previous_refuel = refuels
