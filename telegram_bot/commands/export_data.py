@@ -22,7 +22,7 @@ def process_export_data(user):
     sheet.append(headers) 
 
     # Get all users data about refuel 
-    refuels = list(Refuel.objects.filter(user=user.id).order_by('-date'))
+    refuels = list(Refuel.objects.filter(user=user.id).order_by('-date_upload'))
     # add to file
     for refuel in refuels:
         # Formating date
@@ -36,7 +36,7 @@ def process_export_data(user):
     headers = ["Last refuel", "Previous refuel", "Distance", "Fuel_used", "MPG"]
     sheet.append(headers)
     # Get all users data about mpg_calculations 
-    mpg_calculations = list(MPGCalculation.objects.filter(user=user.id))
+    mpg_calculations = list(MPGCalculation.objects.filter(user=user.id).order_by('-refuel_start__date_upload'))
     for mpg in mpg_calculations:
         sheet.append([
             mpg.refuel_start.date.strftime('%d.%m.%Y'),

@@ -9,7 +9,7 @@ from telegram_bot.models import MPGCalculation, Refuel
 
 @sync_to_async
 def get_latest_refuels(user) -> QuerySet:
-    return list(Refuel.objects.filter(user=user.id).order_by('-date')[:2])
+    return list(Refuel.objects.filter(user=user.id).order_by('-date_upload')[:2])
 
 
 async def mpg_calculations(update: Update, context: CallbackContext):
@@ -22,7 +22,7 @@ async def mpg_calculations(update: Update, context: CallbackContext):
     # get 2 last refuels
     last_refuel, previous_refuel = refuels
     # calculates distance
-    distance = last_refuel.odometer_reading - previous_refuel.odometer_reading
+    distance = abs(last_refuel.odometer_reading - previous_refuel.odometer_reading)
     # Amount of last fuel filled
     fuel_used = previous_refuel.fuel_amount
     # Divides the distance traveled by the amount of fuel since the last fill-up.
