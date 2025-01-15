@@ -150,21 +150,26 @@ async def date(update: Update, context: CallbackContext):
                 reply_markup=get_location_buttons()
             )
             return LOCATION  # Move to the next step, LOCATION
-    try:
+    
         # Extract the user's message as text
-        date_text = update.message.text
-        # Try to parse the date text into a datetime object
-        datetime.strptime(date_text, "%d.%m.%Y")
-        # Store the parsed date in user data
-        context.user_data['date'] = date_text
-        await query.message.reply_text(
-                "Please provide your location or skip:",
-                reply_markup=get_location_buttons()
-            )
-        return LOCATION  # Move to the next step, LOCATION
-    except ValueError:
-        await update.message.reply_text("Invalid date format. Try again.")
-        return DATE  # Move to the next step, DATE
+    if update.message:
+        try:
+            date_text = update.message.text
+            # Try to parse the date text into a datetime object
+            datetime.strptime(date_text, "%d.%m.%Y")
+            # Store the parsed date in user data
+            context.user_data['date'] = date_text
+            await update.message.reply_text(
+                    "Please provide your location or skip:",
+                    reply_markup=get_location_buttons()
+                )
+            return LOCATION  # Move to the next step, LOCATION
+        except ValueError:
+            await update.message.reply_text("Invalid date format. Try again.")
+            return DATE  # Move to the next step, DATE
+    else:
+        await update.message.reply_text("Error: No message received.")
+        return DATE
 
 
 async def location(update: Update, context: CallbackContext):
@@ -249,6 +254,6 @@ def get_refuel_handler():
             LOCATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, location),
                        CallbackQueryHandler(location, pattern="^skip_location|^cancel")]
         },
-        fallbacks=[CommandHandler("cancel", cancel)],
+        fallbacks=[CommandHandler("cancel", cancel)]
     )
 

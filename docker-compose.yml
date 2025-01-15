@@ -1,34 +1,31 @@
-# Файл docker-compose.yml
+# docker-compose.yml file
 
-# Версия docker-compose
+# docker-compose version
 version: '3'
 
-# Перечень volume
+# List of volumes
 volumes:
   pg_data:
 
-# Перечень контейнеров
+# List of containers
 services:
-  # Имя и описание первого контейнера; имя выбирает разработчик. 
-  # Это контейнер БД
+  # This is a DB container
   db:
-    # Из какого образа запустить контейнер:
     image: postgres:13.10
     container_name: mpg_calculator_db
-    # Файл (или список файлов) с переменными окружения
     env_file: .env
-    # Какой volume подключить для этого контейнера
+    # Which volume to attach to this container
     volumes:
       - pg_data:/var/lib/postgresql/data
     networks:
       - app_network
-  # Имя и описание контейнера с бэкендом
+  # Name and description of the container with the backend
   bot:
-    # Из какого Dockerfile собирать образ для этого контейнера:
+    # From which Dockerfile to build the image for this container:
     build: .
     container_name: mpg_calculator_bot
     env_file: .env
-    # Какие контейнеры нужно запустить до старта этого контейнера:
+    ## Which containers need to be started before this container starts:
     depends_on:
       - db
     networks:

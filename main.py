@@ -2,13 +2,13 @@ import os
 
 import django
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mpg_calculator.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 django.setup()
 import asyncio
 
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 
-from mpg_calculator.settings import BOT_TOKEN
+from core.settings import BOT_TOKEN
 from telegram_bot.commands.add_fuel import get_refuel_handler
 from telegram_bot.commands.export_data import export_data
 from telegram_bot.commands.help import help_command

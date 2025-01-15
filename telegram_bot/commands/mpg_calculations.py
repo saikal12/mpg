@@ -26,7 +26,7 @@ async def mpg_calculations(update: Update, context: CallbackContext):
     # Amount of last fuel filled
     fuel_used = previous_refuel.fuel_amount
     # Divides the distance traveled by the amount of fuel since the last fill-up.
-    mpg = distance / fuel_used
+    mpg = round(distance / fuel_used, 2)
     # save in db
     calculation = await sync_to_async(MPGCalculation.objects.create)(
         user=user,
