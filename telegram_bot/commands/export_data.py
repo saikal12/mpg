@@ -16,34 +16,27 @@ def process_export_data(user):
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     sheet.title = "Fuel entries and MPG calculations"
-
-    # Add headers to file
-    headers = ["Date", "Fuel Volume (in gallons)", "Odometer Reading (in miles)", "Fueling Location"]
-    sheet.append(headers) 
-
-    # Get all users data about refuel 
-    refuels = list(Refuel.objects.filter(user=user.id).order_by('-date_upload'))
-    # add to file
-    for refuel in refuels:
-        # Formating date
-        sheet.append([
-            refuel.date.strftime('%d.%m.%Y'),  
-            refuel.fuel_amount,
-            refuel.odometer_reading,
-            refuel.location or "N/A"
-        ])
-    # Add headers to file
-    headers = ["Last refuel", "Previous refuel", "Distance", "Fuel_used", "MPG"]
+    headers = ["Refuel date", "Refuel location",
+               "Fuel added", "Starting fuel",
+               "Remaining fuel", "Starting odometer",
+               "Ending odometer",
+               "Fuel used", "Distance traveled",
+               "MPG",]
     sheet.append(headers)
     # Get all users data about mpg_calculations 
-    mpg_calculations = list(MPGCalculation.objects.filter(user=user.id).order_by('-refuel_start__date_upload'))
-    for mpg in mpg_calculations:
+    mpg_calculations = list(MPGCalculation.objects.filter(user=user.id).order_by('-date', '-date_upload'))
+    for mpg_calculation in mpg_calculations:
         sheet.append([
-            mpg.refuel_start.date.strftime('%d.%m.%Y'),
-            mpg.refuel_end.date.strftime('%d.%m.%Y'),
-            mpg.distance,
-            mpg.fuel_used,
-            mpg.mpg
+            mpg_calculation.date.strftime('%d.%m.%Y'),
+            mpg_calculation.location or "N/A",
+            mpg_calculation.fuel_amount,
+            mpg_calculation.start_fuel,
+            mpg_calculation.remaining_fuel,
+            mpg_calculation.start_odometer_reading,
+            mpg_calculation.end_odometer_reading,
+            f"{mpg_calculation.fuel_used:.2f}",
+            f"{mpg_calculation.distance:.2f}",
+            f"{mpg_calculation.mpg:.2f}",
         ])
 
         # Sheet width and length settings

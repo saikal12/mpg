@@ -11,8 +11,9 @@ from telegram.ext import (CallbackContext, CallbackQueryHandler,
 from telegram_bot.commands.start import create_user_account
 from telegram_bot.models import Refuel
 from datetime import timedelta
+
 # States for adding a refuel
-FUEL, ODOMETER, DATE, LOCATION = range(4)
+FUEL, STARTING_FUEL, REMAINING_FUEL, START_ODOMETER, END_ODOMETER, DATE, LOCATION = range(7)
 
 
 def get_date_buttons():
@@ -59,13 +60,13 @@ def get_cancel_button():
 async def start_add_refuel(update: Update, context: CallbackContext):
     """Starts the process of adding a refuel entry, prompting the user for the amount of fuel."""
     await update.message.reply_text(
-        "You want to add a gas station! Let's start with how much gas did you put in? (in gallons)", 
+        "Enter the amount of fuel added (gallons)",
         reply_markup=get_cancel_button()
     )
     return FUEL
 
 
-async def fuel(update: Update, context: CallbackContext):
+async def validate_data(update, context, key, state, next_state, next_state_prompt, reply_markup=None):
     """Handles the user's input for the amount of fuel and validates it."""
 
     # Extract the callback query from the update
@@ -82,46 +83,54 @@ async def fuel(update: Update, context: CallbackContext):
             # End the conversation
             return ConversationHandler.END
     # Extract the user's message as text
-    fuel_input = update.message.text
+    input_value = update.message.text
 
     # Validation: check that the entered number is positive (using regular expressions)
-    if not re.match(r"^\d+(\.\d+)?$", fuel_input):  # Check for a number with a float point
-        await update.message.reply_text("Please enter a valid number for the fuel volume (e.g., 5.5 or 10).")
+    if not re.match(r"^\d+(\.\d+)?$", input_value):  # Check for a number with a float point
+        await update.message.reply_text("Please enter a valid number (e.g., 5.5 or 10)")
         # Return to the fuel input step
-        return FUEL
+        return state
     
     # Store fuel_input in user data
-    context.user_data['fuel'] = float(fuel_input)
-    await update.message.reply_text("Enter your current odometer reading (in miles).", reply_markup=get_cancel_button())
-    return ODOMETER  # Move to the next step, ODOMETER
+    context.user_data[key] = float(input_value)
+    markup = reply_markup if reply_markup else get_cancel_button()
+    await update.message.reply_text(next_state_prompt, reply_markup=markup)
+    return next_state  # Move to the next step, ODOMETER
 
 
-async def odometer(update: Update, context: CallbackContext):
+async def fuel(update: Update, context: CallbackContext):
+    """Handles the user's input for the amount of fuel and validates it."""
+    next_state_prompt = "Enter the starting fuel level before refueling (gallons)"
+    next_state = await validate_data(update, context, 'fuel', FUEL, STARTING_FUEL, next_state_prompt)
+    return next_state  # Move to the next step, STARTING_FUEL
+
+
+async def starting_fuel(update: Update, context: CallbackContext):
+    """Handles the user's input for the amount of starting fuel and validates it."""
+    next_state_prompt = "Enter the remaining fuel after the trip (gallons)"
+    next_state = await validate_data(update, context, 'start_fuel', STARTING_FUEL, REMAINING_FUEL, next_state_prompt)
+    return next_state  # Move to the next step, REMAINING_FUEL
+
+
+async def remaining_fuel(update: Update, context: CallbackContext):
+    """Handles the user's input for the amount of starting fuel and validates it."""
+    next_state_prompt = "Enter the starting odometer reading (miles)"
+    next_state = await validate_data(update, context, 'remaining_fuel', REMAINING_FUEL, START_ODOMETER, next_state_prompt)
+    return next_state  # Move to the next step, START_ODOMETER
+
+
+async def start_odometer(update: Update, context: CallbackContext):
     """Handles the user's input for the odometer reading and validates it."""
+    next_state_prompt = "Enter the ending odometer reading (miles"
+    next_state = await validate_data(update, context, 'start_odometer', START_ODOMETER, END_ODOMETER, next_state_prompt)
+    return next_state  # Move to the next step, END_ODOMETR
 
-    # Extract the callback query from the update
-    query = update.callback_query
 
-    # if data from callback
-    if query:
-        data = query.data
-        # If the user cancels the action
-        if data == "cancel":
-            await query.answer("Action canceled.")
-            await query.edit_message_text("Action canceled.")
-            # clear the users data and send conversation 
-            context.user_data.clear()
-            return ConversationHandler.END
-    # if data from message
-    odometer_input = update.message.text
-    # Validation: check that the entered number is positive (using regular expressions)
-    if not re.match(r"^\d+(\.\d+)?$", odometer_input):
-        await update.message.reply_text("Please enter a valid number for the odometer reading (e.g., 15000 or 12345.67).")
-        # Return to the odometer input step
-        return ODOMETER 
-    context.user_data['odometer'] = float(odometer_input)
-    await update.message.reply_text("Enter the date of refueling (dd.mm.yyyy).", reply_markup=get_date_buttons())
-    return DATE  # Move to the next step, DATE
+async def end_odometer(update: Update, context: CallbackContext):
+    """Handles the user's input for the odometer reading and validates it."""
+    next_state_prompt = "Enter the refuel date (DD.MM.YYYY)"
+    next_state = await validate_data(update, context, 'end_odometer', END_ODOMETER, DATE,next_state_prompt, get_date_buttons())
+    return next_state  # Move to the next step, DATE
 
 
 async def date(update: Update, context: CallbackContext):
@@ -212,9 +221,11 @@ async def save_to_db(update: Update, context: CallbackContext):
     user = update.effective_user
     # get useraccount object
     user = await create_user_account(user)
-
     fuel = context.user_data['fuel']
-    odometer = context.user_data['odometer']
+    start_fuel = context.user_data['start_fuel']
+    remaining_fuel = context.user_data['remaining_fuel']
+    start_odometer_reading = context.user_data['start_odometer']
+    end_odometer_reading = context.user_data['end_odometer']
     refuel_date = context.user_data['date']
     location = context.user_data['location']
     refuel_date = datetime.strptime(refuel_date, "%d.%m.%Y")
@@ -225,7 +236,10 @@ async def save_to_db(update: Update, context: CallbackContext):
     refuel = await sync_to_async(Refuel.objects.create)(
         user=user,
         fuel_amount=float(fuel),
-        odometer_reading=float(odometer),
+        start_fuel=float(start_fuel),
+        remaining_fuel=float(remaining_fuel),
+        start_odometer_reading=float(start_odometer_reading),
+        end_odometer_reading=float(end_odometer_reading),
         date=refuel_date,
         location=location
     )
@@ -247,13 +261,25 @@ def get_refuel_handler():
         states={
             FUEL: [MessageHandler(filters.TEXT & ~filters.COMMAND, fuel),
                    CallbackQueryHandler(fuel, pattern="^cancel")],
-            ODOMETER: [MessageHandler(filters.TEXT & ~filters.COMMAND, odometer),
-                       CallbackQueryHandler(odometer, pattern="^cancel")],
+
+            STARTING_FUEL: [MessageHandler(filters.TEXT & ~filters.COMMAND, starting_fuel),
+                            CallbackQueryHandler(starting_fuel, pattern="^cancel")],
+
+            REMAINING_FUEL: [MessageHandler(filters.TEXT & ~filters.COMMAND, remaining_fuel),
+                             CallbackQueryHandler(remaining_fuel, pattern="^cancel")],
+
+            START_ODOMETER: [MessageHandler(filters.TEXT & ~filters.COMMAND, start_odometer),
+                             CallbackQueryHandler(start_odometer, pattern="^cancel")],
+
+            END_ODOMETER: [MessageHandler(filters.TEXT & ~filters.COMMAND, end_odometer),
+                           CallbackQueryHandler(end_odometer, pattern="^cancel")],
+
             DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, date),
                    CallbackQueryHandler(date, pattern="^date_|^cancel$")],
+
             LOCATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, location),
                        CallbackQueryHandler(location, pattern="^skip_location|^cancel")]
         },
         fallbacks=[CommandHandler("cancel", cancel)]
+        #per_message = True
     )
-

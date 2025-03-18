@@ -22,7 +22,6 @@ def create_user_account(user):
 
 
 async def start(update: Update, context: CallbackContext):
-
     user = update.effective_user
     # Create or retrieve the user's account in the database.
     user = await create_user_account(user)
@@ -35,6 +34,6 @@ async def start(update: Update, context: CallbackContext):
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     message = (f"Hello {user.username}\n"
-               "This bot will help you calculate the mpg.\n"
-               "To calculate, enter at least two data about the fuel entry")
+               "This bot will help you calculate the mpg.\n")
     await update.message.reply_text((message), reply_markup=reply_markup)
+
