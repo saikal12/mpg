@@ -21,8 +21,7 @@ The bot saves the data in a database (Postrgesql).
 
 **MPG Calculation:**<br>
 The bot retrieves the last two odometer entries.<br>
-Calculates the difference to get the distance traveled.<br>
-Divides the distance by the fuel volume from the latest <br>entry.
+Divides the distance by the fuel volume <br>.
 Displays the MPG result to the user.<br>
 
 **View Calculations:**<br>
